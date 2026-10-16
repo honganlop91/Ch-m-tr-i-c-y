@@ -413,78 +413,116 @@ GAME_HTML = r"""
 <script>
 (function() {
   // ========== SHOP & SKILLS ==========
-  const SHOP_ITEMS = [
+  // Skills with levels (permanent upgrades, always active based on level)
+  // costBase = cost for level 1; each next level costs costBase * (level+1)
+  const SKILLS = [
     {
-      id: 'double_score',
-      name: 'Double Score',
-      icon: '✖️2️⃣',
-      desc: 'x2 points for the whole next game',
-      cost: 60,
-      type: 'consumable'
+      id: 'score_mult',
+      name: 'Score Master',
+      icon: '✖️',
+      maxLevel: 5,
+      costBase: 50,
+      desc: (lv) => lv === 0 ? 'Increase score multiplier' : `Score x${(1 + lv * 0.5).toFixed(1)} (Lv.${lv})`,
+      effect: (lv) => ({ scoreMult: 1 + lv * 0.5 })
     },
     {
       id: 'extra_life',
-      name: 'Extra Life',
+      name: 'Extra Hearts',
       icon: '❤️',
-      desc: '+1 life at the start of next game',
-      cost: 80,
-      type: 'consumable'
+      maxLevel: 5,
+      costBase: 80,
+      desc: (lv) => lv === 0 ? 'Start with more lives' : `+${lv} life at start (Lv.${lv})`,
+      effect: (lv) => ({ extraLives: lv })
     },
     {
       id: 'slow_mo',
-      name: 'Slow Motion',
+      name: 'Time Warp',
       icon: '🐢',
-      desc: 'Fruits move 40% slower next game',
-      cost: 70,
-      type: 'consumable'
+      maxLevel: 5,
+      costBase: 60,
+      desc: (lv) => lv === 0 ? 'Slow down fruits' : `Fruits ${Math.round(lv * 12)}% slower (Lv.${lv})`,
+      effect: (lv) => ({ speedMult: Math.max(0.35, 1 - lv * 0.12) })
     },
     {
       id: 'big_blade',
-      name: 'Big Blade',
+      name: 'Blade Reach',
       icon: '⚔️',
-      desc: 'Larger slice hitbox next game',
-      cost: 65,
-      type: 'consumable'
+      maxLevel: 5,
+      costBase: 55,
+      desc: (lv) => lv === 0 ? 'Bigger slice hitbox' : `Hitbox +${lv * 12}px (Lv.${lv})`,
+      effect: (lv) => ({ bladeBonus: lv * 12 })
     },
     {
       id: 'bomb_shield',
-      name: 'Bomb Shield',
+      name: 'Bomb Guard',
       icon: '🛡️',
-      desc: 'Survive 1 bomb hit next game',
-      cost: 100,
-      type: 'consumable'
+      maxLevel: 3,
+      costBase: 100,
+      desc: (lv) => lv === 0 ? 'Survive bomb hits' : `Survive ${lv} bomb hit(s) (Lv.${lv})`,
+      effect: (lv) => ({ bombShield: lv })
     },
     {
       id: 'fruit_rain',
-      name: 'Fruit Rain',
+      name: 'Fruit Storm',
       icon: '🌧️',
-      desc: 'More fruits spawn next game',
-      cost: 55,
-      type: 'consumable'
+      maxLevel: 5,
+      costBase: 45,
+      desc: (lv) => lv === 0 ? 'More fruits spawn' : `+${lv} extra fruits / faster spawn (Lv.${lv})`,
+      effect: (lv) => ({ spawnBonus: lv * 0.25 })
     },
     {
       id: 'lucky',
       name: 'Lucky Charm',
       icon: '🍀',
-      desc: 'Fewer bombs appear next game',
-      cost: 75,
-      type: 'consumable'
+      maxLevel: 5,
+      costBase: 70,
+      desc: (lv) => lv === 0 ? 'Fewer bombs' : `${Math.round(lv * 15)}% fewer bombs (Lv.${lv})`,
+      effect: (lv) => ({ bombReduce: Math.min(0.85, lv * 0.15) })
     },
     {
       id: 'critical',
       name: 'Critical Slice',
       icon: '💥',
-      desc: '20% chance x3 points per fruit',
-      cost: 90,
-      type: 'consumable'
+      maxLevel: 5,
+      costBase: 75,
+      desc: (lv) => lv === 0 ? 'Chance for x3 points' : `${10 + lv * 8}% crit for x${2 + lv} (Lv.${lv})`,
+      effect: (lv) => ({ critChance: 0.1 + lv * 0.08, critMult: 2 + lv })
+    },
+    {
+      id: 'coin_boost',
+      name: 'Coin Magnet',
+      icon: '🪙',
+      maxLevel: 5,
+      costBase: 40,
+      desc: (lv) => lv === 0 ? 'Earn more coins' : `x${(1 + lv * 0.4).toFixed(1)} coins (Lv.${lv})`,
+      effect: (lv) => ({ coinMult: 1 + lv * 0.4 })
+    },
+    {
+      id: 'combo_master',
+      name: 'Combo Master',
+      icon: '🔥',
+      maxLevel: 5,
+      costBase: 65,
+      desc: (lv) => lv === 0 ? 'Stronger & longer combos' : `Combo +${lv * 15}% power, longer window (Lv.${lv})`,
+      effect: (lv) => ({ comboBonus: lv * 0.15, comboTime: 1.2 + lv * 0.25 })
+    },
+    {
+      id: 'giant_fruit',
+      name: 'Giant Fruit',
+      icon: '🍉',
+      maxLevel: 3,
+      costBase: 90,
+      desc: (lv) => lv === 0 ? 'Fruits are bigger' : `Fruits ${lv * 20}% larger (Lv.${lv})`,
+      effect: (lv) => ({ fruitScale: 1 + lv * 0.2 })
     },
     {
       id: 'max_life',
-      name: 'Max Life +1',
+      name: 'Iron Heart',
       icon: '💖',
-      desc: 'Permanently start with +1 life',
-      cost: 250,
-      type: 'permanent'
+      maxLevel: 3,
+      costBase: 150,
+      desc: (lv) => lv === 0 ? 'Permanent base lives' : `Base lives +${lv} (Lv.${lv})`,
+      effect: (lv) => ({ baseLives: lv })
     }
   ];
 
@@ -512,10 +550,8 @@ GAME_HTML = r"""
   let audioCtx = null, animId = null;
   let bgTime = 0;
 
-  // Active skills for current / next game
-  let ownedPerm = {};       // permanent upgrades
-  let equipped = {};        // consumables equipped for next game
-  let activePowers = {};    // powers currently active in this game
+  // Skill levels (permanent): { skillId: level }
+  let skillLevels = {};
   let bombShieldLeft = 0;
   let scoreMult = 1;
   let speedMult = 1;
@@ -523,6 +559,13 @@ GAME_HTML = r"""
   let spawnBonus = 0;
   let bombReduce = 0;
   let critChance = 0;
+  let critMult = 3;
+  let coinMult = 1;
+  let comboBonus = 0;
+  let comboTimeBonus = 1.2;
+  let fruitScale = 1;
+  let extraLives = 0;
+  let baseLifeBonus = 0;
 
   // ========== AUDIO ==========
   function initAudio() {
@@ -577,78 +620,69 @@ GAME_HTML = r"""
     highScore = parseInt(localStorage.getItem('fn2_highscore') || '0', 10);
     coins = parseInt(localStorage.getItem('fn2_coins') || '0', 10);
     try {
-      ownedPerm = JSON.parse(localStorage.getItem('fn2_perm') || '{}');
-      equipped = JSON.parse(localStorage.getItem('fn2_equipped') || '{}');
-    } catch(e) { ownedPerm = {}; equipped = {}; }
+      skillLevels = JSON.parse(localStorage.getItem('fn2_skills') || '{}');
+    } catch(e) { skillLevels = {}; }
   }
   function saveData() {
     localStorage.setItem('fn2_highscore', highScore);
     localStorage.setItem('fn2_coins', coins);
-    localStorage.setItem('fn2_perm', JSON.stringify(ownedPerm));
-    localStorage.setItem('fn2_equipped', JSON.stringify(equipped));
+    localStorage.setItem('fn2_skills', JSON.stringify(skillLevels));
+  }
+  function getSkillLevel(id) {
+    return skillLevels[id] || 0;
+  }
+  function upgradeCost(skill) {
+    const lv = getSkillLevel(skill.id);
+    if (lv >= skill.maxLevel) return 0;
+    return skill.costBase * (lv + 1) * (lv + 1); // quadratic cost growth
   }
 
-  // ========== SHOP ==========
+  // ========== SHOP (Level-based skills) ==========
   function renderShop() {
     const grid = document.getElementById('shop-grid');
     grid.innerHTML = '';
     document.getElementById('shop-coins').textContent = coins;
 
-    SHOP_ITEMS.forEach(item => {
-      const isPermOwned = item.type === 'permanent' && ownedPerm[item.id];
-      const isEquipped = !!equipped[item.id];
-      const canBuy = coins >= item.cost && !isPermOwned;
+    SKILLS.forEach(skill => {
+      const lv = getSkillLevel(skill.id);
+      const maxed = lv >= skill.maxLevel;
+      const cost = upgradeCost(skill);
+      const canBuy = !maxed && coins >= cost;
 
       const el = document.createElement('div');
-      el.className = 'shop-item' + (isPermOwned || isEquipped ? ' owned' : '') + (isEquipped ? ' active' : '');
+      el.className = 'shop-item' + (lv > 0 ? ' owned' : '') + (maxed ? ' active' : '');
       el.innerHTML = `
-        <div class="shop-icon">${item.icon}</div>
+        <div class="shop-icon">${skill.icon}</div>
         <div class="shop-info">
-          <div class="shop-name">${item.name}</div>
-          <div class="shop-desc">${item.desc}</div>
+          <div class="shop-name">${skill.name} ${lv > 0 ? '<span style="color:#ffd740">Lv.' + lv + (maxed ? ' MAX' : '') + '</span>' : ''}</div>
+          <div class="shop-desc">${skill.desc(lv)}</div>
         </div>
         <div>
-          ${isPermOwned
-            ? '<span class="shop-price" style="color:#66bb6a">OWNED</span>'
-            : isEquipped
-              ? `<button class="btn small secondary" data-unequip="${item.id}">UNEQUIP</button>`
-              : `<button class="btn small ${canBuy ? '' : ''}" data-buy="${item.id}" ${canBuy ? '' : 'disabled'}>
-                   🪙 ${item.cost}
-                 </button>`
+          ${maxed
+            ? '<span class="shop-price" style="color:#66bb6a">MAX</span>'
+            : `<button class="btn small" data-up="${skill.id}" ${canBuy ? '' : 'disabled'}>
+                 🪙 ${cost}
+               </button>`
           }
         </div>
       `;
       grid.appendChild(el);
     });
 
-    // Buy buttons
-    grid.querySelectorAll('[data-buy]').forEach(btn => {
+    grid.querySelectorAll('[data-up]').forEach(btn => {
       btn.onclick = () => {
-        const id = btn.getAttribute('data-buy');
-        const item = SHOP_ITEMS.find(i => i.id === id);
-        if (!item || coins < item.cost) return;
-        if (item.type === 'permanent' && ownedPerm[id]) return;
-
-        coins -= item.cost;
-        if (item.type === 'permanent') {
-          ownedPerm[id] = true;
-        } else {
-          equipped[id] = true;
-        }
+        const id = btn.getAttribute('data-up');
+        const skill = SKILLS.find(s => s.id === id);
+        if (!skill) return;
+        const lv = getSkillLevel(id);
+        if (lv >= skill.maxLevel) return;
+        const cost = upgradeCost(skill);
+        if (coins < cost) return;
+        coins -= cost;
+        skillLevels[id] = lv + 1;
         saveData();
         playBuy();
         updateCoinDisplays();
-        renderShop();
-        updateActivePreview();
-      };
-    });
-
-    // Unequip
-    grid.querySelectorAll('[data-unequip]').forEach(btn => {
-      btn.onclick = () => {
-        const id = btn.getAttribute('data-unequip');
-        delete equipped[id];
-        saveData();
         renderShop();
         updateActivePreview();
       };
@@ -658,21 +692,15 @@ GAME_HTML = r"""
   function updateActivePreview() {
     const box = document.getElementById('active-powers-preview');
     box.innerHTML = '';
-    Object.keys(equipped).forEach(id => {
-      const item = SHOP_ITEMS.find(i => i.id === id);
-      if (item) {
+    SKILLS.forEach(skill => {
+      const lv = getSkillLevel(skill.id);
+      if (lv > 0) {
         const tag = document.createElement('span');
         tag.className = 'power-tag';
-        tag.textContent = item.icon + ' ' + item.name;
+        tag.textContent = skill.icon + ' Lv.' + lv;
         box.appendChild(tag);
       }
     });
-    if (ownedPerm['max_life']) {
-      const tag = document.createElement('span');
-      tag.className = 'power-tag';
-      tag.textContent = '💖 Max Life +1';
-      box.appendChild(tag);
-    }
   }
 
   function updateCoinDisplays() {
@@ -681,40 +709,55 @@ GAME_HTML = r"""
     document.getElementById('hud-coins').textContent = coins + sessionCoins;
   }
 
-  function applyEquippedPowers() {
-    // Reset
+  function applySkillEffects() {
+    // Reset to defaults
     scoreMult = 1;
     speedMult = 1;
     bladeBonus = 0;
     spawnBonus = 0;
     bombReduce = 0;
     critChance = 0;
+    critMult = 3;
+    coinMult = 1;
+    comboBonus = 0;
+    comboTimeBonus = 1.2;
+    fruitScale = 1;
+    extraLives = 0;
+    baseLifeBonus = 0;
     bombShieldLeft = 0;
-    activePowers = {};
 
-    if (equipped['double_score']) { scoreMult = 2; activePowers['double_score'] = true; }
-    if (equipped['slow_mo']) { speedMult = 0.6; activePowers['slow_mo'] = true; }
-    if (equipped['big_blade']) { bladeBonus = 18; activePowers['big_blade'] = true; }
-    if (equipped['fruit_rain']) { spawnBonus = 0.45; activePowers['fruit_rain'] = true; }
-    if (equipped['lucky']) { bombReduce = 0.6; activePowers['lucky'] = true; }
-    if (equipped['critical']) { critChance = 0.2; activePowers['critical'] = true; }
-    if (equipped['bomb_shield']) { bombShieldLeft = 1; activePowers['bomb_shield'] = true; }
-    if (equipped['extra_life']) { activePowers['extra_life'] = true; }
-
-    // Consume equipped after applying
-    equipped = {};
-    saveData();
+    SKILLS.forEach(skill => {
+      const lv = getSkillLevel(skill.id);
+      if (lv <= 0) return;
+      const e = skill.effect(lv);
+      if (e.scoreMult != null) scoreMult = e.scoreMult;
+      if (e.speedMult != null) speedMult = e.speedMult;
+      if (e.bladeBonus != null) bladeBonus = e.bladeBonus;
+      if (e.spawnBonus != null) spawnBonus = e.spawnBonus;
+      if (e.bombReduce != null) bombReduce = e.bombReduce;
+      if (e.critChance != null) critChance = e.critChance;
+      if (e.critMult != null) critMult = e.critMult;
+      if (e.coinMult != null) coinMult = e.coinMult;
+      if (e.comboBonus != null) comboBonus = e.comboBonus;
+      if (e.comboTime != null) comboTimeBonus = e.comboTime;
+      if (e.fruitScale != null) fruitScale = e.fruitScale;
+      if (e.extraLives != null) extraLives = e.extraLives;
+      if (e.baseLives != null) baseLifeBonus = e.baseLives;
+      if (e.bombShield != null) bombShieldLeft = e.bombShield;
+    });
   }
 
   function updatePowerHUD() {
     const el = document.getElementById('power-hud');
     const names = [];
-    if (scoreMult > 1) names.push('x2');
+    if (scoreMult > 1) names.push('x' + scoreMult.toFixed(1));
     if (speedMult < 1) names.push('🐢');
     if (bladeBonus > 0) names.push('⚔️');
-    if (bombShieldLeft > 0) names.push('🛡️');
+    if (bombShieldLeft > 0) names.push('🛡️' + bombShieldLeft);
     if (critChance > 0) names.push('💥');
     if (spawnBonus > 0) names.push('🌧️');
+    if (coinMult > 1) names.push('🪙');
+    if (fruitScale > 1) names.push('🍉');
     if (names.length) {
       el.style.display = 'block';
       el.textContent = names.join(' ');
@@ -737,7 +780,7 @@ GAME_HTML = r"""
       y: H + (t ? t.radius : 40) + 8,
       vx: sideSpeed,
       vy: -upSpeed,
-      radius: isBomb ? 40 : t.radius,
+      radius: (isBomb ? 40 : t.radius) * fruitScale,
       type: isBomb ? 'bomb' : t.name,
       juice: isBomb ? '#ff1744' : t.juice,
       rind: isBomb ? '#222' : t.rind,
@@ -1259,24 +1302,25 @@ GAME_HTML = r"""
           playSlice();
           if (navigator.vibrate) navigator.vibrate(25);
 
-          combo++; comboTimer = 1.25;
+          combo++;
+          comboTimer = comboTimeBonus;
           let pts = f.points;
 
           // Critical
           if (critChance > 0 && Math.random() < critChance) {
-            pts *= 3;
-            showCombo(f.x, f.y - 30, 'CRIT x3!');
+            pts *= critMult;
+            showCombo(f.x, f.y - 30, 'CRIT x' + critMult + '!');
           }
 
           if (combo >= 3) {
-            pts = Math.floor(pts * (1 + combo*0.35));
+            pts = Math.floor(pts * (1 + combo * (0.35 + comboBonus)));
             showCombo(f.x, f.y, combo + 'x');
             playCombo();
           }
 
           pts = Math.floor(pts * scoreMult);
           score += pts;
-          sessionCoins += Math.max(1, Math.floor(f.points / 3));
+          sessionCoins += Math.max(1, Math.floor(f.points / 3 * coinMult));
           updateHUD();
           updateCoinDisplays();
         }
@@ -1400,11 +1444,10 @@ GAME_HTML = r"""
     }
 
     // Apply skills
-    applyEquippedPowers();
+    applySkillEffects();
 
     let baseLives = gameMode === 'zen' ? 99 : 3;
-    if (ownedPerm['max_life']) baseLives += 1;
-    if (activePowers['extra_life']) baseLives += 1;
+    baseLives += baseLifeBonus + extraLives;
     lives = baseLives;
 
     document.getElementById('lives-box').style.display = gameMode === 'zen' ? 'none' : 'block';
