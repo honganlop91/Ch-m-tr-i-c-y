@@ -725,22 +725,18 @@ GAME_HTML = r"""
 
   // ========== ENTITIES ==========
   function createFruit(isBomb=false) {
-    if (W < 50 || H < 50) return null; // safety: canvas not ready
+    if (W < 50 || H < 50) return null;
     const t = isBomb ? null : FRUIT_TYPES[Math.floor(Math.random()*FRUIT_TYPES.length)];
-    // Spawn inside visible width (slightly off edges is ok)
-    const margin = Math.min(80, W * 0.15);
+    const margin = Math.min(60, W * 0.12);
     const x = rand(margin, W - margin);
-    // Launch upward into the screen with controlled arc
-    const baseSpeed = rand(7, 12) * (0.8 + difficulty * 0.12) * speedMult;
-    // Prefer upward angles so fruit flies into view
-    const ang = rand(-Math.PI * 0.85, -Math.PI * 0.15);
-    const vx = Math.cos(ang) * baseSpeed * rand(0.4, 1.0) * (Math.random() < 0.5 ? 1 : -1);
-    const vy = -Math.abs(Math.sin(ang) * baseSpeed) - rand(3, 7) * speedMult;
+    // Strong upward launch so fruits reach the upper half of the screen
+    const upSpeed = rand(14, 20) * (0.85 + difficulty * 0.1) * speedMult;
+    const sideSpeed = rand(-5, 5) * speedMult;
     return {
       x,
-      y: H + (t ? t.radius : 40) + 10,
-      vx,
-      vy,
+      y: H + (t ? t.radius : 40) + 8,
+      vx: sideSpeed,
+      vy: -upSpeed,
       radius: isBomb ? 40 : t.radius,
       type: isBomb ? 'bomb' : t.name,
       juice: isBomb ? '#ff1744' : t.juice,
@@ -1195,7 +1191,7 @@ GAME_HTML = r"""
       }
       f.x += f.vx * dt * 60;
       f.y += f.vy * dt * 60;
-      f.vy += 0.26 * dt * 60 * speedMult;
+      f.vy += 0.16 * dt * 60 * speedMult; // lighter gravity = stay higher longer
       f.rotation += f.rotSpeed;
 
       if (f.y > H + 70 && !f.sliced) {
@@ -1226,7 +1222,8 @@ GAME_HTML = r"""
   }
 
   function trySlice(x1,y1,x2,y2) {
-    const hitR = 10 + bladeBonus;
+    // Large hitbox so slicing is easy on touch screens
+    const hitR = 28 + bladeBonus;
     for (let i = fruits.length-1; i >= 0; i--) {
       const f = fruits[i];
       if (f.sliced) continue;
@@ -1337,11 +1334,14 @@ GAME_HTML = r"""
 
   // ========== INPUT ==========
   function getPos(e) {
+    // Use CSS pixel coordinates (same space as fruit positions after setTransform)
     const rect = canvas.getBoundingClientRect();
-    const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
     const cx = (e.touches && e.touches.length) ? e.touches[0].clientX : e.clientX;
     const cy = (e.touches && e.touches.length) ? e.touches[0].clientY : e.clientY;
-    return { x: (cx - rect.left)*sx, y: (cy - rect.top)*sy };
+    return {
+      x: cx - rect.left,
+      y: cy - rect.top
+    };
   }
   function onStart(e) {
     if (!isPlaying || isPaused) return;
@@ -1352,10 +1352,10 @@ GAME_HTML = r"""
     if (!isSlicing || !isPlaying || isPaused) return;
     e.preventDefault();
     const p = getPos(e);
-    const last = slicePoints[slicePoints.length-1];
-    if (dist(last.x,last.y,p.x,p.y) > 6) {
+    const last = slicePoints[slicePoints.length - 1];
+    if (dist(last.x, last.y, p.x, p.y) > 3) {
       slicePoints.push(p);
-      if (slicePoints.length > 24) slicePoints.shift();
+      if (slicePoints.length > 30) slicePoints.shift();
       trySlice(last.x, last.y, p.x, p.y);
     }
   }
@@ -1389,11 +1389,12 @@ GAME_HTML = r"""
     fruits = []; particles = []; blades = []; sparkles = [];
     isPlaying = true; isPaused = false; spawnTimer = 0.15;
     // Spawn a few fruits right away so player sees action
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 3; i++) {
       const f = createFruit(false);
       if (f) {
-        f.y = H * 0.7 + rand(0, 40);
-        f.vy = -rand(6, 10) * speedMult;
+        f.y = H * 0.85;
+        f.vy = -rand(12, 18) * speedMult;
+        f.x = rand(W * 0.2, W * 0.8);
         fruits.push(f);
       }
     }
